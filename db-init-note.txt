@@ -1,0 +1,5 @@
+#!/bin/sh
+# This script is intended to be run before starting the app in production if needed
+# But for simplicity with SQLite in the container, we rely on `npx prisma db push` 
+# or migration scripts.
+# For this simple setup, we'll suggest a startup command update in docker-compose.

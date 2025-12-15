@@ -1,0 +1,21 @@
+services:
+  votacao:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=file:/app/data/database.sqlite
+      - NODE_ENV=production
+      - PORT=3000
+      - ADMIN_USER=${ADMIN_USER}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    command: >
+      sh -c "
+      npx prisma@5.22.0 db push --accept-data-loss --skip-generate &&
+      node server.js
+      "
