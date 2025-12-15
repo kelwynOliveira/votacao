@@ -3,6 +3,7 @@
 import { submitVote } from '../../actions';
 import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { getBrowserFingerprint } from '@/lib/fingerprint';
 
 interface Option {
   id: number;
@@ -46,7 +47,8 @@ export default function VotingClient({ voting }: { voting: Voting }) {
     setOptimisticVoted(true); // Immediate UI feedback
     
     try {
-      const res = await submitVote(voting.id, optionId);
+      const fingerprint = getBrowserFingerprint();
+      const res = await submitVote(voting.id, optionId, fingerprint);
       if (!res.success) {
         alert(res.message);
         setOptimisticVoted(false); // Revert if failed

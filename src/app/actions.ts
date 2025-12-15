@@ -43,13 +43,7 @@ export async function toggleVotingStatus(votingId: string, isOpen: boolean) {
   revalidatePath(`/vote/${votingId}`);
 }
 
-export async function submitVote(votingId: string, optionId: number) {
-  const headersList = await headers();
-  const ip = headersList.get('x-forwarded-for') || '127.0.0.1';
-  
-  // Clean IP (take first if multiple)
-  const ipAddress = ip.split(',')[0].trim();
-
+export async function submitVote(votingId: string, optionId: number, fingerprint: string) {
   // Check if voting is open
   const voting = await prisma.voting.findUnique({
     where: { id: votingId },
@@ -59,13 +53,11 @@ export async function submitVote(votingId: string, optionId: number) {
     return { success: false, message: 'Voting is closed or not found' };
   }
 
-  // Check if IP already voted
-  const existingVote = await prisma.voteLog.findUnique({
+  // Check if fingerprint already voted
+  const existingVote = await prisma.voteLog.findFirst({
     where: {
-      votingId_ipAddress: {
-        votingId,
-        ipAddress,
-      },
+      votingId,
+      fingerprint,
     },
   });
 
@@ -77,8 +69,10 @@ export async function submitVote(votingId: string, optionId: number) {
   await prisma.$transaction([
     prisma.voteLog.create({
       data: {
-        votingId,
-        ipAddress,
+        fingerprint,
+        voting: {
+          connect: { id: votingId },
+        },
       },
     }),
     prisma.option.update({
@@ -93,11 +87,7 @@ export async function submitVote(votingId: string, optionId: number) {
   return { success: true };
 }
 
-export async function getVotingDetails(votingId: string) {
-  const headersList = await headers();
-  const ip = headersList.get('x-forwarded-for') || '127.0.0.1';
-  const ipAddress = ip.split(',')[0].trim();
-
+export async function getVotingDetails(votingId: string, fingerprint?: string) {
   const voting = await prisma.voting.findUnique({
     where: { id: votingId },
     include: {
@@ -109,18 +99,21 @@ export async function getVotingDetails(votingId: string) {
 
   if (!voting) return null;
 
-  const userVote = await prisma.voteLog.findUnique({
-    where: {
-      votingId_ipAddress: {
+  // Only check for existing vote if fingerprint is provided (client-side)
+  let hasVoted = false;
+  if (fingerprint) {
+    const userVote = await prisma.voteLog.findFirst({
+      where: {
         votingId,
-        ipAddress,
+        fingerprint,
       },
-    },
-  });
+    });
+    hasVoted = !!userVote;
+  }
 
   return {
     ...voting,
-    hasVoted: !!userVote,
+    hasVoted,
   };
 }
 

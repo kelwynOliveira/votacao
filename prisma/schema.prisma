@@ -30,12 +30,12 @@ model Option {
 }
 
 model VoteLog {
-  id        Int      @id @default(autoincrement())
-  votingId  String
-  ipAddress String
-  createdAt DateTime @default(now())
-  voting    Voting   @relation(fields: [votingId], references: [id], onDelete: Cascade)
+  id          Int      @id @default(autoincrement())
+  votingId    String
+  fingerprint String
+  createdAt   DateTime @default(now())
+  voting      Voting   @relation(fields: [votingId], references: [id], onDelete: Cascade)
 
-  @@unique([votingId, ipAddress])
+  @@unique([votingId, fingerprint])
   @@map("votes_log")
 }
