@@ -1,13 +1,16 @@
 services:
   votacao:
+    container_name: votacao
     build:
       context: .
       dockerfile: Dockerfile
-    restart: always
-    ports:
-      - "3000:3000"
+    restart: unless-stopped
+    # ports:
+    #  - "3000:3000"
     volumes:
       - ./data:/app/data
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=file:/app/data/database.sqlite
       - NODE_ENV=production
@@ -19,3 +22,21 @@ services:
       npx prisma@5.22.0 db push --accept-data-loss --skip-generate &&
       node server.js
       "
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 1024M 
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.votacao.rule=Host(`votacao.${DOMAIN_NAME}`)
+      - traefik.http.routers.votacao.entrypoints=websecure
+      - traefik.http.routers.votacao.tls.certresolver=letsencrypt
+      - traefik.http.services.votacao.loadbalancer.server.port=3000
+    networks:
+      - traefik-net
+
+networks:
+  traefik-net:
+    external: true
+    name: docker_traefik-net
