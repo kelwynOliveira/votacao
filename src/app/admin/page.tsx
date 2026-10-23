@@ -1,4 +1,5 @@
 import { getVotings, logout, toggleVotingStatus } from '../actions';
+import { getCandidates } from '../candidate-actions';
 import Link from 'next/link';
 import CreateVotingForm from './create-form';
 import { revalidatePath } from 'next/cache';
@@ -21,25 +22,19 @@ export default async function AdminPage(props: {
   const searchParams = await props.searchParams;
   const page = Number(searchParams.page) || 1;
   const status = (searchParams.status || 'all') as 'all' | 'open' | 'closed';
-  const { votings, totalPages, currentPage } = await getVotings({ page, limit: 5, status });
+
+  const [{ votings, totalPages, currentPage }, candidates] = await Promise.all([
+    getVotings({ page, limit: 5, status }),
+    getCandidates(),
+  ]);
 
   return (
-    <div className="min-h-screen bg-gray-50 md:p-8 p-3">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between flex-wrap  items-center mb-8 ">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <form action={logout}>
-            <button className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm">
-              Logout
-            </button>
-          </form>
-        </div>
-
-        {/* Create Voting Section */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Criar nova votação</h2>
-          <CreateVotingForm />
-        </div>
+    <div className="space-y-8">
+      {/* Create Voting Section */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">Criar nova votação</h2>
+        <CreateVotingForm candidates={candidates} />
+      </div>
 
         {/* Voting List Section */}
         <div className="space-y-6">
@@ -160,6 +155,5 @@ export default async function AdminPage(props: {
           </div>
         )}
       </div>
-    </div>
   );
 }

@@ -39,3 +39,12 @@ model VoteLog {
   @@unique([votingId, fingerprint])
   @@map("votes_log")
 }
+
+model Candidate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+
+  @@map("candidates")
+}
+

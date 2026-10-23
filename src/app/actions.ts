@@ -4,21 +4,88 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { headers, cookies } from 'next/headers';
 
-export async function createVoting(formData: FormData) {
-  const title = formData.get('title') as string;
-  const optionsInput = formData.get('options') as string;
+export async function createVoting(
+  formData:
+    | FormData
+    | {
+        title: string;
+        candidateIds?: number[];
+        candidateNames?: string[];
+        options?: string[];
+      }
+) {
+  let title = '';
+  let optionsList: string[] = [];
 
-  if (!title || !optionsInput) {
-    return { success: false, message: 'Título e opções são obrigatórios' };
+  if (formData instanceof FormData) {
+    title = (formData.get('title') as string)?.trim() || '';
+
+    // 1. Check for candidateIds array from checkboxes
+    const candidateIdStrings = formData.getAll('candidateIds') as string[];
+    if (candidateIdStrings.length > 0) {
+      const ids = candidateIdStrings
+        .map((id) => parseInt(id, 10))
+        .filter((id) => !isNaN(id));
+
+      if (ids.length > 0) {
+        const candidates = await prisma.candidate.findMany({
+          where: { id: { in: ids } },
+        });
+        const candidateMap = new Map(candidates.map((c) => [c.id, c.name]));
+        optionsList = ids
+          .map((id) => candidateMap.get(id))
+          .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
+      }
+    }
+
+    // 2. Check for candidateNames array
+    if (optionsList.length === 0) {
+      const candidateNames = formData.getAll('candidateNames') as string[];
+      if (candidateNames.length > 0) {
+        optionsList = candidateNames
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+      }
+    }
+
+    // 3. Fallback to legacy textarea newline-separated options
+    if (optionsList.length === 0) {
+      const optionsInput = formData.get('options') as string;
+      if (optionsInput) {
+        optionsList = optionsInput
+          .split('\n')
+          .map((opt) => opt.trim())
+          .filter((opt) => opt.length > 0);
+      }
+    }
+  } else {
+    // Plain object payload
+    title = formData.title?.trim() || '';
+    if (formData.candidateIds && formData.candidateIds.length > 0) {
+      const candidates = await prisma.candidate.findMany({
+        where: { id: { in: formData.candidateIds } },
+      });
+      const candidateMap = new Map(candidates.map((c) => [c.id, c.name]));
+      optionsList = formData.candidateIds
+        .map((id) => candidateMap.get(id))
+        .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
+    } else if (formData.candidateNames && formData.candidateNames.length > 0) {
+      optionsList = formData.candidateNames
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    } else if (formData.options && formData.options.length > 0) {
+      optionsList = formData.options
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    }
   }
 
-  const optionsList = optionsInput
-    .split('\n')
-    .map((opt) => opt.trim())
-    .filter((opt) => opt.length > 0);
+  if (!title) {
+    return { success: false, message: 'Título da votação é obrigatório' };
+  }
 
   if (optionsList.length < 2) {
-    return { success: false, message: 'Pelo menos duas opções são necessárias' };
+    return { success: false, message: 'Selecione pelo menos dois candidatos para a votação' };
   }
 
   await prisma.voting.create({
@@ -31,6 +98,7 @@ export async function createVoting(formData: FormData) {
   });
 
   revalidatePath('/admin');
+  revalidatePath('/');
   return { success: true };
 }
 
@@ -158,12 +226,14 @@ export async function login(formData: FormData) {
   const password = formData.get('password') as string;
   const username = formData.get('username') as string;
   
+  /*
   console.log('Login attempt:', { 
     receivedUser: username, 
     envUser: process.env.ADMIN_USER,
     matchUser: username === process.env.ADMIN_USER,
     matchPass: password === process.env.ADMIN_PASSWORD // intentionally not logging password
   });
+  */
 
   if (
     username === process.env.ADMIN_USER &&
