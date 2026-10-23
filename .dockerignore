@@ -1,0 +1,28 @@
+# Dependencies and build caches
+node_modules
+.next
+.git
+.gitignore
+
+# Environment files
+.env
+.env*.local
+
+# Database and persistent data
+data
+prisma/*.db*
+*.db
+*.db-journal
+
+# Tests and documentation
+tests
+coverage
+vitest.config.*
+README.md
+db-init-note.txt
+
+# System files
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
